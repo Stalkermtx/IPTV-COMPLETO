@@ -1,0 +1,131 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: user UID (from Firebase Auth)
+    // Fields:
+    //   - email: string
+    //   - name: string
+    //   - whatsapp: string
+    //   - role: string ('user' or 'admin')
+    //   - subscriptionStatus: string ('active', 'inactive', 'expired')
+    //   - planId: string
+    //   - usageCount: number
+    //   - credits: number
+    //
+    // Collection: plans
+    // Document ID: plan ID
+    // Fields:
+    //   - name: string
+    //   - price: string
+    //   - features: list
+    //   - resolution: string
+    //   - watermark: boolean
+    //
+    // Collection: templates
+    // Document ID: template ID
+    // Fields:
+    //   - name: string
+    //   - content: string
+    //
+    // Collection: generations
+    // Document ID: generation ID
+    // Fields:
+    //   - userId: string
+    //   - userEmail: string
+    //   - prompt: string
+    //   - imageUrl: string
+    //   - timestamp: string
+    //   - model: string
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        ('email' in request.auth.token && request.auth.token.email == "hiagovic@gmail.com") ||
+        ('email' in request.auth.token && request.auth.token.email == "admin@conextv.com")
+      );
+    }
+    
+    function isTestUser() {
+      return isAuthenticated() && 'email' in request.auth.token && request.auth.token.email == "teste@conextv.com";
+    }
+
+    function hasOnlyAllowedFields(allowedFields) {
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Users can read their own profile, admins can read all
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Users can create their own profile (with role 'user'), admins can create any
+      allow create: if isAuthenticated() && isOwner(userId) && 
+                    request.resource.data.role == 'user' || isAdmin();
+                    
+      // Users can update their own profile (but not role/subscription), admins can update any
+      allow update: if (isOwner(userId) && 
+                       request.resource.data.role == resource.data.role &&
+                       request.resource.data.subscriptionStatus == resource.data.subscriptionStatus &&
+                       request.resource.data.planId == resource.data.planId &&
+                       request.resource.data.credits == resource.data.credits) || 
+                       isAdmin() ||
+                       (isTestUser() && isOwner(userId)); // Test user can update its own usage
+                       
+      allow delete: if isAdmin();
+    }
+
+    match /plans/{planId} {
+      // Anyone authenticated can read plans
+      allow read: if isAuthenticated();
+      // Only admins can modify plans
+      allow write: if isAdmin();
+    }
+
+    match /templates/{templateId} {
+      // Anyone authenticated can read templates
+      allow read: if isAuthenticated();
+      // Only admins can modify templates
+      allow write: if isAdmin();
+    }
+
+    match /generations/{generationId} {
+      // Users can read their own generations, admins can read all
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // Users can create their own generations
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Only admins can delete generations
+      allow update, delete: if isAdmin();
+    }
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}

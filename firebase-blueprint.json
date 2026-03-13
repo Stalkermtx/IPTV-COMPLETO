@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "password": { "type": "string" },
+        "mustChangePassword": { "type": "boolean" },
+        "name": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "subscriptionStatus": { "type": "string", "enum": ["active", "inactive", "expired"] },
+        "subscriptionExpiresAt": { "type": "string", "format": "date-time" },
+        "activatedAt": { "type": "string", "format": "date-time" },
+        "planId": { "type": "string" },
+        "usageCount": { "type": "number" },
+        "credits": { "type": "number" }
+      },
+      "required": ["id", "email", "role", "subscriptionStatus", "usageCount"]
+    },
+    "Plan": {
+      "title": "Plan",
+      "description": "A subscription plan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "string" },
+        "features": { "type": "array", "items": { "type": "string" } },
+        "maxUsage": { "type": "number" },
+        "resolution": { "type": "string", "enum": ["Low", "4K"] },
+        "watermark": { "type": "boolean" },
+        "contactWhatsapp": { "type": "string" },
+        "credits": { "type": "number" }
+      },
+      "required": ["id", "name", "price", "features", "resolution", "watermark"]
+    },
+    "MessageTemplate": {
+      "title": "MessageTemplate",
+      "description": "A WhatsApp message template",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "content": { "type": "string" }
+      },
+      "required": ["id", "name", "content"]
+    },
+    "GenerationHistory": {
+      "title": "GenerationHistory",
+      "description": "A record of an image or video generation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "prompt": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "model": { "type": "string" }
+      },
+      "required": ["id", "userId", "userEmail", "prompt", "imageUrl", "timestamp", "model"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Collection of all users"
+    },
+    "plans": {
+      "schema": { "$ref": "#/entities/Plan" },
+      "description": "Collection of all subscription plans"
+    },
+    "templates": {
+      "schema": { "$ref": "#/entities/MessageTemplate" },
+      "description": "Collection of all message templates"
+    },
+    "generations": {
+      "schema": { "$ref": "#/entities/GenerationHistory" },
+      "description": "Collection of all generation history records"
+    }
+  }
+}
